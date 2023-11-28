@@ -1,0 +1,52 @@
+FROM continuumio/anaconda3:2023.09-0
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+  && echo $TZ > /etc/timezone \
+  && apt-get update \
+  && apt-get upgrade -y \
+  && useradd -m -d /home/jupyter jupyter \
+  && echo jupyter:jupyter | chpasswd \
+  && apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends \
+    build-essential \
+    byobu \
+    ditaa \
+    htop \
+    less \
+    p7zip-full \
+    sudo \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* \
+  && conda install jupyter -y --quiet \
+  && conda install -c conda-forge stanza
+
+RUN git clone https://github.com/lindenb/makefile2graph.git \
+  && cd makefile2graph \
+  && make \
+  && make install
+
+
+USER jupyter
+WORKDIR /home/jupyter
+
+COPY build/conffiles.7z /tmp
+RUN 7z x /tmp/conffiles.7z       \
+  && cp conffiles/.bash*     .   \
+  && cp conffiles/.gitconfig .   \
+  && mkdir -p .local/share/AzureR \
+  && rm -rfv conffiles/ \
+  && touch .bash_eternal_history
+
+
+USER root
+
+RUN chown -R jupyter:jupyter /home/jupyter
+
+ARG BUILD_DATE
+
+LABEL org.opencontainers.image.source="https://github.com/Sea3R-Analytics/sea3r_repo" \
+      org.opencontainers.image.authors="Mick Cooney <mcooney@describedata.com>" \
+      org.label-schema.build-date=$BUILD_DATE
+
+
